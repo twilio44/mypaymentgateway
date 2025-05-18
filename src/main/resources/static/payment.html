@@ -1,0 +1,118 @@
+<!--http://localhost:8080/payment.html-->
+<!--enter above URL in Browser-->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stripe Payment</title>
+    <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+
+<!--Below is the HTML form created in the Browser-->
+
+<h2>Stripe Payment Form</h2>
+
+<!-- Payment form -->
+<form id="payment-form">
+    <div>
+        <label for="card-element">Credit or debit card</label>
+        <div id="card-element"><!-- Stripe Elements will be inserted here --></div>
+        <div id="card-errors" role="alert"></div>
+    </div>
+
+    <button type="submit">Submit Payment</button>
+</form>
+
+<script>
+    // Your Stripe public API key
+    const stripe = Stripe('pk_test_51Pz1JbF8zdLC9z1wenqWIfiRTXa79NT3FL9u8IQhQu86x1JwZUlKUEgC2QwQpZM2n1scB6oWtdIfK6jDzPxleWIu00BwOgbnjr');
+
+    // Create an instance of Elements
+    const elements = stripe.elements();
+
+    // Custom styling for Elements
+    const style = {
+        base: {
+            color: '#32325d',
+            fontFamily: 'Arial, sans-serif',
+            fontSmoothing: 'antialiased',
+            fontSize: '16px',
+            '::placeholder': {
+                color: '#32325d'
+            }
+        },
+        invalid: {
+            color: '#fa755a',
+            iconColor: '#fa755a'
+        }
+    };
+
+    // Create an instance of the card Element
+    const card = elements.create('card', {style: style});
+
+    // Add an instance of the card Element into the `card-element` div
+    card.mount('#card-element');
+
+    // Handle real-time validation errors from the card Element
+    card.on('change', function(event) {
+        const displayError = document.getElementById('card-errors');
+        if (event.error) {
+            displayError.textContent = event.error.message;
+        } else {
+            displayError.textContent = '';
+        }
+    });
+
+    // Handle form submission
+    const form = document.getElementById('payment-form');
+    form.addEventListener('submit', function(event) {
+        event.preventDefault();
+
+<!--File: index.html (JavaScript section)-->
+<!--What happens:-->
+<!--Stripe's API generates a token (e.g., tok_xxxxx).-->
+<!--The token represents the user's card information and is sent securely to your
+<!--back-end Spring Boot application.&ndash;&gt;-->
+
+        stripe.createToken(card).then(function(result) {
+            if (result.error) {
+                // Inform the user if there was an error
+                const errorElement = document.getElementById('card-errors');
+                errorElement.textContent = result.error.message;
+            } else {
+                // Send the token to your backend if successfully generated
+                stripeTokenHandler(result.token);
+            }
+        });
+    });
+
+    // Submit the token to your server
+    function stripeTokenHandler(token) {
+        fetch('/payment/charge', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                stripeToken: token.id,
+                amount: 4000, // Amount in cents, e.g., 4000 = $40
+                currency: 'usd',
+                description: 'Payment for order #1234'
+            })
+        })
+        .then(response => response.text())
+        .then(result => {
+            alert(result);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+</script>
+
+</body>
+</html>
